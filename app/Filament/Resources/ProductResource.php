@@ -76,16 +76,24 @@ class ProductResource extends Resource
                 FileUpload::make('image')
                     ->label('Gambar Utama')
                     ->image()
+                    ->disk('public')
                     ->directory('products')
+                    ->maxSize(2048)
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                     ->imageResizeMode('cover')
-                    ->imageCropAspectRatio('1:1'),
+                    ->imageCropAspectRatio('1:1')
+                    ->helperText('Maks. 2MB · JPG, PNG, WebP'),
 
                 FileUpload::make('images')
                     ->label('Gambar Tambahan')
                     ->image()
+                    ->disk('public')
                     ->multiple()
                     ->directory('products')
-                    ->reorderable(),
+                    ->maxSize(2048)
+                    ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                    ->reorderable()
+                    ->helperText('Maks. 2MB per file · JPG, PNG, WebP'),
             ])->columns(2),
 
             Section::make('Harga & Stok')->schema([
