@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', ($setting->store_name ?? 'Taufiq Store') . ' — Belanja Lebih Mudah')
+@section('title', ($setting->store_name ?? 'Cold Storage KUD Mino Saroyo') . ' — Ikan Segar Berkualitas')
 
 @section('content')
 
@@ -68,7 +68,7 @@
     {{-- ═══ CATEGORY FILTER ═══ --}}
     <div class="section-header">
         <h2 class="section-title">
-            🛍️ Katalog Produk
+            🐟 Katalog Produk Ikan
             <span class="pill">{{ $products->total() }} item</span>
         </h2>
     </div>
@@ -135,11 +135,11 @@
 
     @else
         <div class="empty-state">
-            <i class="fas fa-search empty-state-icon"></i>
+            <i class="fas fa-fish empty-state-icon"></i>
             <h3>Produk tidak ditemukan</h3>
             <p>Coba kata kunci atau kategori lain</p>
             <a href="{{ route('home') }}" class="btn btn-primary" style="margin-top:1.5rem;">
-                Lihat Semua Produk
+                Lihat Semua Produk Ikan
             </a>
         </div>
     @endif

@@ -17,20 +17,21 @@
            ROOT & RESET
         ════════════════════════════════════ */
         :root {
-            --primary: #16a34a;
-            --primary-d: #15803d;
-            --primary-l: #dcfce7;
-            --primary-xl: #f0fdf4;
-            --accent: #6366f1;
-            --accent-l: #eef2ff;
-            --dark: #0f172a;
-            --dark-2: #1e293b;
-            --mid: #475569;
-            --muted: #94a3b8;
-            --border: #e2e8f0;
-            --border-2: #f1f5f9;
+            /* === Cold Storage KUD Mino Saroyo — Ocean Blue-to-Green Theme === */
+            --primary: #0e9f6e;         /* teal-green */
+            --primary-d: #057a55;       /* deep green */
+            --primary-l: #d1fae5;       /* mint light */
+            --primary-xl: #ecfdf5;      /* mint ultra-light */
+            --accent: #0284c7;          /* ocean blue */
+            --accent-l: #e0f2fe;        /* sky blue light */
+            --dark: #0c1a2e;            /* deep navy */
+            --dark-2: #0f2744;          /* navy */
+            --mid: #334e68;             /* slate blue */
+            --muted: #6b8fae;           /* muted blue-gray */
+            --border: #cfe2f3;          /* blue-tinted border */
+            --border-2: #e8f4fd;        /* soft blue border */
             --white: #ffffff;
-            --light: #f8fafc;
+            --light: #f0f9ff;           /* ocean-air background */
             --red: #ef4444;
             --amber: #f59e0b;
             --wa: #25d366;
@@ -38,10 +39,10 @@
             --radius: 14px;
             --radius-lg: 20px;
             --radius-xl: 28px;
-            --shadow-xs: 0 1px 3px rgba(0, 0, 0, .06);
-            --shadow-sm: 0 2px 10px rgba(0, 0, 0, .07);
-            --shadow: 0 4px 20px rgba(0, 0, 0, .09);
-            --shadow-lg: 0 8px 40px rgba(0, 0, 0, .13);
+            --shadow-xs: 0 1px 3px rgba(2, 132, 199, .08);
+            --shadow-sm: 0 2px 10px rgba(2, 132, 199, .10);
+            --shadow: 0 4px 20px rgba(2, 132, 199, .12);
+            --shadow-lg: 0 8px 40px rgba(2, 132, 199, .15);
             --shadow-xl: 0 20px 60px rgba(0, 0, 0, .18);
             --t: .22s cubic-bezier(.4, 0, .2, 1);
         }
@@ -115,23 +116,24 @@
         .nav-brand-logo {
             width: 38px;
             height: 38px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
+            background: linear-gradient(135deg, var(--accent), var(--primary));
             border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 1.15rem;
             color: #fff;
-            box-shadow: 0 4px 12px rgba(22, 163, 74, .35);
+            box-shadow: 0 4px 12px rgba(2, 132, 199, .40);
         }
 
         .nav-brand-text {
-            font-size: 1.15rem;
+            font-size: 1.05rem;
             font-weight: 900;
-            background: linear-gradient(135deg, var(--primary-d), var(--accent));
+            background: linear-gradient(135deg, var(--accent), var(--primary-d));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
+            line-height: 1.2;
         }
 
         .nav-search {
@@ -155,9 +157,9 @@
         }
 
         .nav-search-input:focus {
-            border-color: var(--primary);
+            border-color: var(--accent);
             background: #fff;
-            box-shadow: 0 0 0 4px rgba(22, 163, 74, .1);
+            box-shadow: 0 0 0 4px rgba(2, 132, 199, .12);
         }
 
         .nav-search-icon {
@@ -288,7 +290,7 @@
            HERO BANNER
         ════════════════════════════════════ */
         .hero {
-            background: linear-gradient(135deg, var(--dark) 0%, var(--dark-2) 60%, #1e3a2f 100%);
+            background: linear-gradient(145deg, #0c1a2e 0%, #0f2744 40%, #084c3f 80%, #065f46 100%);
             padding: 3.5rem 1.5rem;
             position: relative;
             overflow: hidden;
@@ -299,9 +301,22 @@
             position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 60% 80% at 80% 50%, rgba(22, 163, 74, .18) 0%, transparent 70%),
-                radial-gradient(ellipse 40% 60% at 20% 80%, rgba(99, 102, 241, .12) 0%, transparent 70%);
+                radial-gradient(ellipse 55% 70% at 85% 40%, rgba(2, 132, 199, .22) 0%, transparent 65%),
+                radial-gradient(ellipse 40% 55% at 15% 85%, rgba(14, 159, 110, .18) 0%, transparent 65%),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Ccircle cx='30' cy='30' r='1.5' fill='rgba(255,255,255,0.04)'/%3E%3C/svg%3E");
             pointer-events: none;
+        }
+
+        /* Animated wave effect at bottom of hero */
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--light);
+            clip-path: ellipse(55% 100% at 50% 100%);
         }
 
         .hero-inner {
@@ -315,13 +330,13 @@
             display: inline-flex;
             align-items: center;
             gap: .4rem;
-            background: rgba(22, 163, 74, .2);
-            border: 1px solid rgba(22, 163, 74, .3);
+            background: rgba(2, 132, 199, .2);
+            border: 1px solid rgba(56, 189, 248, .4);
             border-radius: 999px;
             padding: .3rem .85rem;
             font-size: .75rem;
             font-weight: 700;
-            color: #4ade80;
+            color: #38bdf8;
             letter-spacing: .05em;
             margin-bottom: 1.25rem;
         }
@@ -335,7 +350,7 @@
         }
 
         .hero-title .highlight {
-            background: linear-gradient(135deg, #4ade80, #34d399);
+            background: linear-gradient(135deg, #34d399, #38bdf8);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -754,15 +769,15 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary), var(--primary-d));
+            background: linear-gradient(135deg, var(--accent), var(--primary));
             color: #fff;
-            box-shadow: 0 4px 14px rgba(22, 163, 74, .35);
+            box-shadow: 0 4px 14px rgba(2, 132, 199, .35);
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(22, 163, 74, .45);
-            filter: brightness(1.05);
+            box-shadow: 0 8px 24px rgba(2, 132, 199, .50);
+            filter: brightness(1.07);
         }
 
         .btn-outline {
@@ -1546,8 +1561,8 @@
     <nav class="navbar" id="mainNav">
         <div class="nav-inner">
             <a href="{{ route('home') }}" class="nav-brand">
-                <div class="nav-brand-logo">🛍️</div>
-                <span class="nav-brand-text">{{ $setting->store_name ?? 'Taufiq Store' }}</span>
+                <div class="nav-brand-logo">🐟</div>
+                <span class="nav-brand-text">{{ $setting->store_name ?? 'Cold Storage KUD Mino Saroyo' }}</span>
             </a>
 
             <div class="nav-search" id="searchWrap">
@@ -1618,40 +1633,44 @@
         <div class="hero">
             <div class="hero-inner">
                 <div class="hero-badge">
-                    <i class="fas fa-bolt"></i>
-                    TERPERCAYA & TERJANGKAU
+                    <i class="fas fa-fish"></i>
+                    SEGAR · HIGIENIS · TERPERCAYA
                 </div>
                 <h1 class="hero-title">
-                    Belanja Lebih Mudah,<br>
-                    Harga Lebih <span class="highlight">Hemat!</span>
+                    Cold Storage<br>
+                    <span class="highlight">KUD Mino Saroyo</span>
                 </h1>
                 <p class="hero-sub">
-                    Temukan ribuan produk pilihan dengan kualitas terjamin dan pengiriman cepat langsung ke tanganmu.
+                    Pusat penjualan ikan & hasil laut segar berkualitas tinggi. Langsung dari nelayan, disimpan dengan teknologi cold storage modern.
                 </p>
                 <div class="hero-cta">
                     <a href="#products" class="btn btn-primary btn-lg">
-                        <i class="fas fa-shopping-bag"></i> Belanja Sekarang
+                        <i class="fas fa-fish"></i> Lihat Produk Ikan
                     </a>
                     @if(!empty($setting->whatsapp_number))
                         <a href="https://wa.me/{{ preg_replace('/[^0-9]/', '', $setting->whatsapp_number) }}" target="_blank"
                             class="btn btn-outline btn-lg">
-                            <i class="fab fa-whatsapp"></i> Chat Admin
+                            <i class="fab fa-whatsapp"></i> Pesan via WhatsApp
                         </a>
                     @endif
                 </div>
                 @if(isset($productCount) || true)
                     <div class="hero-stats">
                         <div>
-                            <div class="hero-stat-num">500+</div>
-                            <div class="hero-stat-label">Produk Tersedia</div>
+                            <div class="hero-stat-num">🐟</div>
+                            <div class="hero-stat-label">Ikan Segar</div>
                         </div>
                         <div>
-                            <div class="hero-stat-num">1.000+</div>
-                            <div class="hero-stat-label">Pelanggan Puas</div>
+                            <div class="hero-stat-num">❄️</div>
+                            <div class="hero-stat-label">Cold Storage</div>
+                        </div>
+                        <div>
+                            <div class="hero-stat-num">🚢</div>
+                            <div class="hero-stat-label">Langsung Nelayan</div>
                         </div>
                         <div>
                             <div class="hero-stat-num">100%</div>
-                            <div class="hero-stat-label">Terpercaya</div>
+                            <div class="hero-stat-label">Halal & Higienis</div>
                         </div>
                     </div>
                 @endif
@@ -1670,8 +1689,8 @@
             <div class="footer-top">
                 <div>
                     <div class="footer-brand">
-                        <div class="nav-brand-logo" style="box-shadow:none;">🛍️</div>
-                        {{ $setting->store_name ?? 'Taufiq Store' }}
+                        <div class="nav-brand-logo" style="box-shadow:none;">🐟</div>
+                        {{ $setting->store_name ?? 'Cold Storage KUD Mino Saroyo' }}
                     </div>
                     <p class="footer-desc">
                         {{ $setting->store_description ?? 'Belanja mudah, harga terbaik. Nikmati pengalaman berbelanja online yang menyenangkan.' }}
