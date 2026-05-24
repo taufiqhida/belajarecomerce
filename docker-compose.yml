@@ -1,0 +1,133 @@
+services:
+
+  # ── PHP-FPM (Laravel App) ──────────────────
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    container_name: mino_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./storage:/var/www/html/storage
+      - ./public/storage:/var/www/html/public/storage
+    environment:
+      - APP_ENV=production
+    env_file:
+      - .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mino_net
+
+  # ── Nginx ──────────────────────────────────
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: mino_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/var/www/html/public:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - ./storage/app/public:/var/www/html/public/storage:ro
+    depends_on:
+      - app
+    networks:
+      - mino_net
+
+  # ── MySQL 8.0 ──────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: mino_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-barulagi}
+      MYSQL_USER: ${DB_USERNAME:-barulagi_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
+    ports:
+      - "127.0.0.1:3306:3306"   # hanya bisa diakses dari localhost VPS
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mino_net
+
+  # ── Redis (session & cache) ─────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: mino_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mino_net
+
+  # ── Queue Worker ────────────────────────────
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    container_name: mino_queue
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    volumes:
+      - ./storage:/var/www/html/storage
+    env_file:
+      - .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - mino_net
+
+  # ── Scheduler (cron) ───────────────────────
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    container_name: mino_scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: >
+      sh -c "while true; do php artisan schedule:run --no-interaction; sleep 60; done"
+    volumes:
+      - ./storage:/var/www/html/storage
+    env_file:
+      - .env.production
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - mino_net
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  mino_net:
+    driver: bridge
