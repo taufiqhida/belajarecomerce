@@ -41,9 +41,13 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
         gd \
         zip \
         intl \
-        opcache \
+        opcache
+
+# Install Redis extension via PECL (needs phpize deps on Alpine)
+RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS \
     && pecl install redis \
     && docker-php-ext-enable redis \
+    && apk del .phpize-deps \
     && rm -rf /tmp/pear
 
 # Install Composer
