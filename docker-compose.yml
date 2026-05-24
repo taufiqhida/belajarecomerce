@@ -55,13 +55,11 @@ services:
     volumes:
       - db_data:/var/lib/mysql
       - ./docker/mysql/my.cnf:/etc/mysql/conf.d/my.cnf:ro
-    ports:
-      - "127.0.0.1:3306:3306"   # hanya bisa diakses dari localhost VPS
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - mino_net
 

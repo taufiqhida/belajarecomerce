@@ -12,7 +12,7 @@ RUN npm run build
 # ─────────────────────────────────────────────
 # Stage 2: PHP app (Laravel)
 # ─────────────────────────────────────────────
-FROM php:8.2-fpm-alpine AS app
+FROM php:8.4-fpm-alpine AS app
 
 # Install system dependencies
 RUN apk add --no-cache \
