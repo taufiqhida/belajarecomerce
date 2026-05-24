@@ -41,7 +41,10 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
         gd \
         zip \
         intl \
-        opcache
+        opcache \
+    && pecl install redis \
+    && docker-php-ext-enable redis \
+    && rm -rf /tmp/pear
 
 # Install Composer
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
@@ -59,7 +62,8 @@ COPY . .
 COPY --from=node-build /app/public/build ./public/build
 
 # Create required directories (some are gitignored)
-RUN mkdir -p /var/www/html/bootstrap/cache \
+RUN mkdir -p /var/log/php \
+    && mkdir -p /var/www/html/bootstrap/cache \
     && mkdir -p /var/www/html/storage/app/public \
     && mkdir -p /var/www/html/storage/app/livewire-tmp \
     && mkdir -p /var/www/html/storage/framework/sessions \
