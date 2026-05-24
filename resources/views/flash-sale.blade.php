@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Flash Sale - ' . ($setting->store_name ?? 'Taufiq Store'))
+@section('title', 'Flash Sale - ' . ($setting->store_name ?? 'Cold Storage'))
 @section('content')
     <div style="text-align:center;margin-bottom:2rem;">
         <div

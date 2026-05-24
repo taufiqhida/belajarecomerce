@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>@yield('title', $setting->store_name ?? 'Taufiq Store')</title>
+    <title>@yield('title', $setting->store_name ?? 'Cold Storage')</title>
     <meta name="description" content="@yield('description', $setting->store_description ?? '')">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link
@@ -1707,7 +1707,7 @@
             </div>
             <hr class="footer-divider">
             <div class="footer-bottom">
-                <span>© {{ date('Y') }} {{ $setting->store_name ?? 'Taufiq Store' }}. Hak cipta dilindungi.</span>
+                <span>© {{ date('Y') }} {{ $setting->store_name ?? 'Cold Storage' }}. Hak cipta dilindungi.</span>
                 <span>Dibuat dengan ❤️</span>
             </div>
         </div>

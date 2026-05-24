@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Riwayat Pesanan - ' . ($setting->store_name ?? 'Taufiq Store'))
+@section('title', 'Riwayat Pesanan - ' . ($setting->store_name ?? 'Cold Storage'))
 
 @section('head')
     <style>

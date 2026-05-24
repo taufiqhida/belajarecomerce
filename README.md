@@ -1,4 +1,4 @@
-# Taufiq Store - Panduan Instalasi & Upload ke Hosting
+# Cold Storage - Panduan Instalasi & Upload ke Hosting
 
 Aplikasi ini dibangun menggunakan Laravel 11. Berikut adalah panduan langkah demi langkah untuk mengunggah (deploy) aplikasi ini ke CPanel / Shared Hosting dengan aman.
 
@@ -74,7 +74,7 @@ Karena file `index.php` sekarang berada di `public_html`, sedangkan folder siste
 3. Klik kanan pada file `.env` dan pilih **Edit**.
 4. Perbarui pengaturan berikut sesuai data web dan database hosting Anda:
    ```env
-   APP_NAME="Taufiq Store"
+   APP_NAME="Cold Storage"
    APP_ENV=production
    APP_DEBUG=false
    APP_URL=https://namadomainanda.com
@@ -128,3 +128,4 @@ Aplikasi memuat gambar produk dan media dari direktori `storage`. Di hosting, An
 
 ---
 Selamat, website e-commerce Anda kini telah live di hosting! Halaman admin Filament dapat Anda akses di url `/admin` (misal: `https://namadomainanda.com/admin`).
+

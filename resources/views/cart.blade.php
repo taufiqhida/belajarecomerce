@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Keranjang - ' . ($setting->store_name ?? 'Taufiq Store'))
+@section('title', 'Keranjang - ' . ($setting->store_name ?? 'Cold Storage'))
 
 @section('content')
     <div class="cart-page-wrap">

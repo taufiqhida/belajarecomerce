@@ -37,10 +37,11 @@ class StoreSetting extends Model
     public static function current(): self
     {
         return static::firstOrCreate([], [
-            'store_name' => 'Taufiq Store',
+            'store_name' => 'Cold Storage',
             'whatsapp_number' => '',
             'site_mode' => 'live',
             'message_template' => "Halo, saya ingin memesan:\n\n{items}\n\nTotal: {total}\nPembayaran: {payment}\n\nNama: {name}\nHP: {phone}\n\nCatatan: {note}",
         ]);
     }
 }
+

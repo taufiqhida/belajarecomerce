@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', $article->title . ' - ' . ($setting->store_name ?? 'Taufiq Store'))
+@section('title', $article->title . ' - ' . ($setting->store_name ?? 'Cold Storage'))
 @section('description', $article->excerpt ?? '')
 
 @section('head')
@@ -344,3 +344,4 @@
         @endif
     </div>
 @endsection
+

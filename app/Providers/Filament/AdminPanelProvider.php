@@ -32,7 +32,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->login()
-            ->brandName('🛍️ Taufiq Store')
+            ->brandName('🛍️ Cold Storage')
             ->colors([
                 'primary' => Color::Emerald,
                 'gray' => Color::Slate,
@@ -76,3 +76,4 @@ class AdminPanelProvider extends PanelProvider
             ]);
     }
 }
+

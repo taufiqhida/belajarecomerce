@@ -12,7 +12,7 @@ return new class extends Migration {
             $table->string('whatsapp_number')->default('');
             $table->text('message_template')->nullable();
             $table->enum('site_mode', ['live', 'maintenance', 'coming_soon'])->default('live');
-            $table->string('store_name')->default('Taufiq Store');
+            $table->string('store_name')->default('Cold Storage');
             $table->text('store_description')->nullable();
             $table->string('store_logo')->nullable();
             $table->string('store_address')->nullable();
@@ -26,3 +26,4 @@ return new class extends Migration {
         Schema::dropIfExists('store_settings');
     }
 };
+

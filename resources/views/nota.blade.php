@@ -241,7 +241,7 @@
 
         {{-- HEADER --}}
         <div class="nota-header">
-            <div class="store-name">{{ $setting->store_name ?? 'Taufiq Store' }}</div>
+            <div class="store-name">{{ $setting->store_name ?? 'Cold Storage' }}</div>
             <div class="store-tagline">{{ $setting->store_description ?? 'Terima kasih telah berbelanja!' }}</div>
         </div>
 

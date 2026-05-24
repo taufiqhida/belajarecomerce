@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Coming Soon - Taufiq Store</title>
+    <title>Coming Soon - Cold Storage</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         * {
@@ -108,7 +108,7 @@
         <span class="icon">⏳</span>
         <h1>Coming Soon</h1>
         <p>
-            Taufiq Store sedang mempersiapkan pengalaman belanja terbaik untuk Anda.
+            Cold Storage sedang mempersiapkan pengalaman belanja terbaik untuk Anda.
             Pantau terus untuk penawaran-penawaran menarik!
         </p>
         <div class="countdown" id="countdown">

@@ -1,6 +1,6 @@
 # 🚀 Panduan Deploy ke Domainesia
 
-> **Project:** Taufiq Store (Laravel 12 + Filament 3)  
+> **Project:** Cold Storage (Laravel 12 + Filament 3)  
 > **PHP Required:** 8.2 atau lebih tinggi  
 > **Laravel:** 12.x
 
@@ -104,7 +104,7 @@ nano .env                    # atau gunakan File Manager untuk edit
 
 Edit nilai-nilai berikut:
 ```env
-APP_NAME="Taufiq Store"
+APP_NAME="Cold Storage"
 APP_ENV=production
 APP_KEY=                    # akan diisi di langkah berikutnya
 APP_DEBUG=false
@@ -239,4 +239,5 @@ php artisan view:cache
 
 ---
 
-*Dibuat untuk project Taufiq Store — Laravel 12 / Filament 3*
+*Dibuat untuk project Cold Storage — Laravel 12 / Filament 3*
+

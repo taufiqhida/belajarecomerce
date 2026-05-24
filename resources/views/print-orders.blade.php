@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Pesanan — {{ $setting->store_name ?? 'Taufiq Store' }}</title>
+    <title>Cetak Pesanan — {{ $setting->store_name ?? 'Cold Storage' }}</title>
     <style>
         * {
             margin: 0;
@@ -290,7 +290,7 @@
     {{-- Header --}}
     <div class="page-header">
         <div>
-            <div class="store-title">{{ $setting->store_name ?? 'Taufiq Store' }}</div>
+            <div class="store-title">{{ $setting->store_name ?? 'Cold Storage' }}</div>
             <div style="font-size:11px;color:#6b7280;margin-top:2px;">Laporan Pesanan</div>
         </div>
         <div class="report-meta">
