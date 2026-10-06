@@ -29,6 +29,7 @@ class Product extends Model
     protected $casts = [
         'images' => 'array',
         'is_active' => 'boolean',
+        'stock' => 'decimal:2',
         'base_price' => 'decimal:2',
         'modal_price' => 'decimal:2',
     ];

@@ -12,6 +12,7 @@ class ProductVariant extends Model
         'product_id',
         'name',
         'type',
+        'weight_kg',
         'price',
         'modal_price',
         'stock',
@@ -22,6 +23,7 @@ class ProductVariant extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'modal_price' => 'decimal:2',
+        'weight_kg' => 'decimal:2',
         'stock' => 'integer',
         'is_active' => 'boolean',
     ];

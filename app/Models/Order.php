@@ -32,6 +32,33 @@ class Order extends Model
         'ordered_at' => 'datetime',
     ];
 
+    protected static function booted(): void
+    {
+        // Batalkan pesanan -> stok kembali; aktifkan lagi -> stok dikurangi
+        static::updated(function (Order $order) {
+            if (!$order->wasChanged('status')) {
+                return;
+            }
+            $was = $order->getOriginal('status');
+            $now = $order->status;
+            if ($now === 'cancelled' && $was !== 'cancelled') {
+                $sign = 1;
+            } elseif ($was === 'cancelled' && $now !== 'cancelled') {
+                $sign = -1;
+            } else {
+                return;
+            }
+            foreach ($order->items as $item) {
+                if ($item->product_id && (float) $item->weight_kg > 0) {
+                    Product::whereKey($item->product_id)->increment('stock', $sign * (float) $item->weight_kg);
+                }
+                if ($item->flash_sale_id && (float) $item->flash_kg > 0) {
+                    FlashSale::whereKey($item->flash_sale_id)->increment('flash_stock', $sign * (float) $item->flash_kg);
+                }
+            }
+        });
+    }
+
     public function paymentMethod(): BelongsTo
     {
         return $this->belongsTo(PaymentMethod::class);

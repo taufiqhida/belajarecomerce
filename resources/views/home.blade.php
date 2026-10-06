@@ -100,7 +100,9 @@
                                 🛍️</div>
                         @endif
 
-                        @if($activeFs)
+                        @if($product->stock <= 0)
+                            <div class="card-badge" style="background:#64748b;color:#fff;">Habis</div>
+                        @elseif($activeFs)
                             <div class="card-badge flash">⚡ Flash</div>
                         @elseif($product->badge)
                             <div class="card-badge {{ $product->badge }}">{{ $product->badge_label }}</div>

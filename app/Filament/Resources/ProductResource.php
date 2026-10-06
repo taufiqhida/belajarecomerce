@@ -112,6 +112,7 @@ class ProductResource extends Resource
                 TextInput::make('stock')
                     ->label('Stok')
                     ->numeric()
+                    ->suffix('kg')
                     ->default(0),
 
                 TextInput::make('sort_order')
@@ -145,6 +146,13 @@ class ProductResource extends Resource
                                     'other' => 'Lainnya',
                                 ])
                                 ->default('default'),
+
+                            TextInput::make('weight_kg')
+                                ->label('Berat Paket')
+                                ->numeric()
+                                ->suffix('kg')
+                                ->default(1)
+                                ->required(),
 
                             TextInput::make('price')
                                 ->label('Harga Jual (Rp)')
@@ -203,7 +211,7 @@ class ProductResource extends Resource
                     ->label('Harga')
                     ->money('IDR')
                     ->sortable(),
-                TextColumn::make('stock')->label('Stok')->sortable(),
+                TextColumn::make('stock')->label('Stok (kg)')->sortable(),
                 ToggleColumn::make('is_active')->label('Aktif'),
                 TextColumn::make('created_at')->label('Dibuat')->since()->sortable(),
             ])

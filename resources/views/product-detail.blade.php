@@ -465,6 +465,10 @@
                 <div class="pi-desc">{!! $product->description !!}</div>
             @endif
 
+            <div style="margin-bottom:.75rem;font-size:.9rem;font-weight:600;color:{{ $product->stock > 0 ? '#16a34a' : '#ef4444' }};">
+                {{ $product->stock > 0 ? 'Stok tersedia: ' . rtrim(rtrim(number_format($product->stock, 2, ',', '.'), '0'), ',') . ' kg' : 'Stok habis' }}
+            </div>
+
             @if($product->variants->count() > 0)
                 <div class="variant-label">Pilih Varian: <span class="variant-required-label">* Wajib dipilih</span></div>
                 <div class="variants-grid" id="variantGroup">
@@ -472,7 +476,9 @@
                         @php
                             $variantFlash = $product->flashSales->first(fn($fs) => $fs->product_variant_id == $variant->id);
                         @endphp
+                        @php $outOfStock = (float) $variant->weight_kg > (float) $product->stock; @endphp
                         <div class="variant-option"
+                            @if($outOfStock) style="opacity:.45;pointer-events:none;" title="Stok tidak cukup" @endif
                             data-id="{{ $variant->id }}"
                             data-price="{{ $variant->price }}"
                             data-name="{{ $variant->name }}"

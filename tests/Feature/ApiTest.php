@@ -38,7 +38,7 @@ class ApiTest extends TestCase
     public function test_create_order_api(): void
     {
         $category = Category::create(['name' => 'Test', 'slug' => 'test', 'is_active' => true, 'sort_order' => 1]);
-        $product  = Product::create(['name' => 'Test', 'slug' => 'test-p', 'category_id' => $category->id, 'base_price' => 50000, 'is_active' => true, 'sort_order' => 1]);
+        $product  = Product::create(['name' => 'Test', 'slug' => 'test-p', 'category_id' => $category->id, 'base_price' => 50000, 'stock' => 10, 'is_active' => true, 'sort_order' => 1]);
         $pm       = PaymentMethod::create(['name' => 'Transfer', 'type' => 'bank', 'is_active' => true, 'sort_order' => 1, 'admin_fee' => 0, 'fee_type' => 'fixed']);
 
         $response = $this->postJson('/api/order', [

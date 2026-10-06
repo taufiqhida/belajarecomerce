@@ -141,6 +141,33 @@
 
         const fmtRp = n => 'Rp ' + Math.round(n).toLocaleString('id');
 
+        const cartKeyOf = c => c.id + (c.variantId ? '_' + c.variantId : '');
+
+        async function syncCartWithServer() {
+            const cart = getCart();
+            if (!cart.length) return;
+            try {
+                const r = await fetch('/api/cart/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '' },
+                    body: JSON.stringify({ items: cart.map(c => ({ key: cartKeyOf(c), id: c.id, variantId: c.variantId || null })) })
+                });
+                if (!r.ok) return;
+                const fresh = await r.json();
+                const map = Object.fromEntries(fresh.map(f => [f.key, f]));
+                const removed = [];
+                const updated = cart.filter(c => {
+                    const f = map[cartKeyOf(c)];
+                    if (!f) return true;
+                    if (!f.available) { removed.push(c.name); return false; }
+                    c.name = f.name; c.variant = f.variant; c.price = f.price; c.image = f.image;
+                    return true;
+                });
+                saveCart(updated);
+                if (removed.length) toast('Dihapus (sudah tidak tersedia): ' + removed.join(', '), 'err');
+            } catch (e) { }
+        }
+
         function renderCart() {
             const cart = getCart();
             const empty = document.getElementById('cartEmpty');
@@ -399,5 +426,6 @@
         });
 
         renderCart();
+        syncCartWithServer().then(renderCart);
     </script>
 @endsection

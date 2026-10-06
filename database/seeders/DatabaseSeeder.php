@@ -60,6 +60,8 @@ class DatabaseSeeder extends Seeder
             Category::firstOrCreate(['slug' => $cat['slug']], $cat);
         }
 
+        $this->call(ProductSeeder::class);
+
         $this->command->info('✅ Seeder selesai!');
         $this->command->info('📧 Super Admin: admin@coldstorage.com / password');
         $this->command->info('📧 Staf Admin: staf@coldstorage.com / password');

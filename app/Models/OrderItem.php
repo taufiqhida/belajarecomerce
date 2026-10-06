@@ -15,6 +15,9 @@ class OrderItem extends Model
         'variant_name',
         'price',
         'quantity',
+        'weight_kg',
+        'flash_sale_id',
+        'flash_kg',
         'subtotal',
     ];
 

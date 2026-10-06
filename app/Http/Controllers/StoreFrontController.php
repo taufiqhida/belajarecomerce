@@ -179,6 +179,48 @@ class StoreFrontController extends Controller
         return response()->json($products);
     }
 
+    public function syncCart(Request $request)
+    {
+        $result = [];
+        foreach ((array) $request->input('items', []) as $row) {
+            $product = Product::find($row['id'] ?? null);
+            if (!$product || !$product->is_active) {
+                $result[] = ['key' => $row['key'] ?? null, 'available' => false];
+                continue;
+            }
+
+            $variant = null;
+            $price = (float) $product->base_price;
+            if (!empty($row['variantId'])) {
+                $variant = ProductVariant::where('product_id', $product->id)->find($row['variantId']);
+                if (!$variant || !$variant->is_active) {
+                    $result[] = ['key' => $row['key'] ?? null, 'available' => false];
+                    continue;
+                }
+                $price = (float) $variant->price;
+            }
+
+            $fs = $product->activeFlashSale();
+            if ($fs) {
+                $fsVariantId = $fs->product_variant_id;
+                if ((!$variant && !$fsVariantId) || ($variant && $fsVariantId && $fsVariantId == $variant->id)) {
+                    $price = (float) $fs->flash_price;
+                }
+            }
+
+            $result[] = [
+                'key' => $row['key'] ?? null,
+                'available' => true,
+                'name' => $product->name,
+                'variant' => $variant?->name,
+                'price' => $price,
+                'image' => $product->image ? asset('storage/' . $product->image) : '',
+            ];
+        }
+
+        return response()->json($result);
+    }
+
     public function getSettings()
     {
         $s = StoreSetting::current();
@@ -252,8 +294,12 @@ class StoreFrontController extends Controller
                 $subtotal = 0;
                 $orderItems = [];
 
-                foreach ($request->items as $item) {
-                    $product = Product::findOrFail($item['product_id']);
+                // Urutkan per produk agar urutan penguncian baris konsisten (cegah deadlock)
+                $items = collect($request->items)->sortBy('product_id')->values();
+
+                foreach ($items as $item) {
+                    // Kunci baris produk: pesanan bersamaan untuk produk yang sama antre di sini
+                    $product = Product::lockForUpdate()->findOrFail($item['product_id']);
                     $variant = null;
                     $price = (float) $product->base_price;
 
@@ -265,7 +311,14 @@ class StoreFrontController extends Controller
                     }
 
                     // Check flash sale — bisa untuk produk tanpa varian ATAU untuk varian spesifik
-                    $flashSale = $product->activeFlashSale();
+                    $flashSale = $product->flashSales()
+                        ->where('is_active', true)
+                        ->where('starts_at', '<=', now())
+                        ->where('ends_at', '>=', now())
+                        ->lockForUpdate()
+                        ->first();
+                    $flashSaleId = null;
+                    $flashApplied = false;
                     if ($flashSale) {
                         // Flash sale berlaku jika:
                         // - FS tanpa varian spesifik (berlaku untuk semua / produk polos), ATAU
@@ -274,13 +327,29 @@ class StoreFrontController extends Controller
                         if (!$variant && !$fsVariantId) {
                             // produk tanpa varian
                             $price = (float) $flashSale->flash_price;
+                            $flashApplied = true;
                         } elseif ($variant && $fsVariantId && $fsVariantId == $variant->id) {
                             // varian yang sama dengan flash sale
                             $price = (float) $flashSale->flash_price;
+                            $flashApplied = true;
                         }
                     }
 
                     $qty = (int) $item['quantity'];
+                    $weightKg = (float) ($variant?->weight_kg ?? 1) * $qty;
+
+                    // Kuota flash sale (kg): habis = pesanan ditolak, bukan diam-diam harga normal
+                    $flashKg = 0;
+                    if ($flashApplied) {
+                        if ((float) $flashSale->flash_stock < $weightKg) {
+                            throw new \DomainException(
+                                'Kuota flash sale ' . $product->name . ' tidak cukup. Sisa ' . rtrim(rtrim(number_format((float) $flashSale->flash_stock, 2, ',', '.'), '0'), ',') . ' kg.'
+                            );
+                        }
+                        $flashSale->decrement('flash_stock', $weightKg);
+                        $flashSaleId = $flashSale->id;
+                        $flashKg = $weightKg;
+                    }
                     $lineSubtotal = $price * $qty;
                     $subtotal += $lineSubtotal;
 
@@ -291,8 +360,23 @@ class StoreFrontController extends Controller
                         'variant_name' => $variant?->name,
                         'price' => $price,
                         'quantity' => $qty,
+                        'weight_kg' => $weightKg,
+                        'flash_sale_id' => $flashSaleId,
+                        'flash_kg' => $flashKg,
                         'subtotal' => $lineSubtotal,
                     ];
+                }
+
+                // Cek & kurangi stok (kg), dikunci agar aman saat pesanan bersamaan
+                foreach (collect($orderItems)->groupBy('product_id') as $productId => $lines) {
+                    $need = (float) $lines->sum('weight_kg');
+                    $locked = Product::whereKey($productId)->lockForUpdate()->first();
+                    if ((float) $locked->stock < $need) {
+                        throw new \DomainException(
+                            "Stok {$locked->name} tidak cukup. Sisa " . rtrim(rtrim(number_format((float) $locked->stock, 2, ',', '.'), '0'), ',') . " kg."
+                        );
+                    }
+                    $locked->decrement('stock', $need);
                 }
 
                 // Admin fee
@@ -380,6 +464,8 @@ class StoreFrontController extends Controller
                 'order_code' => $order['order']->order_code,
                 'whatsapp_link' => $order['whatsapp_link'],
             ]);
+        } catch (\DomainException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

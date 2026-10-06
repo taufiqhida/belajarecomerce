@@ -37,6 +37,7 @@ Route::get('/coming-soon', function () {
 // API
 Route::prefix('api')->group(function () {
     Route::get('/products/search', [StoreFrontController::class, 'searchProducts']);
+    Route::post('/cart/sync', [StoreFrontController::class, 'syncCart']);
     Route::get('/settings', [StoreFrontController::class, 'getSettings']);
     Route::post('/discount/validate', [StoreFrontController::class, 'validateDiscount']);
     Route::post('/order', [StoreFrontController::class, 'createOrder']);

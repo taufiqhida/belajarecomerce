@@ -55,7 +55,7 @@ class FlashSaleResource extends Resource
                     ->disabled(fn($get) => !$get('product_id')),
 
                 TextInput::make('flash_price')->label('Harga Flash Sale (Rp)')->numeric()->prefix('Rp')->required(),
-                TextInput::make('flash_stock')->label('Stok Flash Sale')->numeric()->default(0),
+                TextInput::make('flash_stock')->label('Kuota Flash Sale')->suffix('kg')->helperText('Jumlah kg yang boleh dijual dengan harga flash. 0 = habis.')->numeric()->default(0),
                 DateTimePicker::make('starts_at')->label('Mulai')->required(),
                 DateTimePicker::make('ends_at')->label('Selesai')->required(),
                 Toggle::make('is_active')->label('Aktif')->default(true),
