@@ -48,6 +48,15 @@ class Order extends Model
             } else {
                 return;
             }
+            if ($order->discount_code_id) {
+                // batal -> jatah kode diskon kembali; aktif lagi -> terpakai lagi
+                $code = DiscountCode::find($order->discount_code_id);
+                if ($sign === 1 && $code && $code->used_count > 0) {
+                    $code->decrement('used_count');
+                } elseif ($sign === -1 && $code) {
+                    $code->increment('used_count');
+                }
+            }
             foreach ($order->items as $item) {
                 if ($item->product_id && (float) $item->weight_kg > 0) {
                     Product::whereKey($item->product_id)->increment('stock', $sign * (float) $item->weight_kg);

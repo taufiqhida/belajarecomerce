@@ -521,7 +521,7 @@
             @if($soldCount > 0)
                 <p style="margin-top:0.75rem;font-size:0.8rem;color:var(--muted);">
                     <i class="fas fa-fire" style="font-size:.7rem;color:#ef4444;"></i>
-                    Produk terjual sebanyak: <strong style="color:var(--dark);">{{ $soldCount }} pcs</strong>
+                    Produk terjual sebanyak: <strong style="color:var(--dark);">{{ rtrim(rtrim(number_format($soldCount, 2, ',', '.'), '0'), ',') }} kg</strong>
                 </p>
             @endif
         </div>
@@ -789,7 +789,7 @@
 
             const item = {
                 id: {{ $product->id }},
-                name: '{{ addslashes($product->name) }}',
+                name: @json($product->name),
                 price: selectedVariantPrice,   // sudah = flash price jika ada
                 image: '{{ $product->image ? asset("storage/" . $product->image) : "" }}',
                 variant: selectedVariantName || null,

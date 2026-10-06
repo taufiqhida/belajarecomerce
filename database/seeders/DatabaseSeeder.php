@@ -48,18 +48,7 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Kategori Ikan
-        $categories = [
-            ['name' => 'Ikan Nila', 'slug' => 'ikan-nila', 'icon' => 'heroicon-o-fish', 'sort_order' => 1],
-            ['name' => 'Ikan Lele', 'slug' => 'ikan-lele', 'icon' => 'heroicon-o-fish', 'sort_order' => 2],
-            ['name' => 'Ikan Kakap', 'slug' => 'ikan-kakap', 'icon' => 'heroicon-o-fish', 'sort_order' => 3],
-            ['name' => 'Ikan Patin', 'slug' => 'ikan-patin', 'icon' => 'heroicon-o-fish', 'sort_order' => 4],
-            ['name' => 'Ikan Gurame', 'slug' => 'ikan-gurame', 'icon' => 'heroicon-o-fish', 'sort_order' => 5],
-        ];
-        foreach ($categories as $cat) {
-            Category::firstOrCreate(['slug' => $cat['slug']], $cat);
-        }
-
+        // Kategori & produk ikan (kategori dibuat di ProductSeeder)
         $this->call(ProductSeeder::class);
 
         $this->command->info('✅ Seeder selesai!');

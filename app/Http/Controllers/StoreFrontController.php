@@ -83,7 +83,10 @@ class StoreFrontController extends Controller
             ->get();
 
         // Hitung total unit terjual untuk produk ini
-        $soldCount = OrderItem::where('product_id', $product->id)->sum('quantity');
+        // Total kg terjual (pesanan yang tidak dibatalkan)
+        $soldCount = (float) OrderItem::where('product_id', $product->id)
+            ->whereHas('order', fn($q) => $q->where('status', '!=', 'cancelled'))
+            ->sum('weight_kg');
 
         return view('product-detail', compact('product', 'flashSale', 'setting', 'paymentMethods', 'testimonials', 'soldCount'));
     }
@@ -278,11 +281,13 @@ class StoreFrontController extends Controller
     {
         $request->validate([
             'customer_name' => 'required|string|max:255',
-            'customer_phone' => 'required|string|max:30',
+            'customer_phone' => ['required', 'string', 'max:30', 'regex:/^(\+?62|0)8[0-9\s\-]{7,15}$/'],
             'payment_method_id' => 'required|exists:payment_methods,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+        ], [
+            'customer_phone.regex' => 'Nomor HP/WhatsApp tidak valid. Contoh: 08123456789',
         ]);
 
         try {
@@ -300,14 +305,23 @@ class StoreFrontController extends Controller
                 foreach ($items as $item) {
                     // Kunci baris produk: pesanan bersamaan untuk produk yang sama antre di sini
                     $product = Product::lockForUpdate()->findOrFail($item['product_id']);
+                    if (!$product->is_active) {
+                        throw new \DomainException("{$product->name} sudah tidak dijual.");
+                    }
+
                     $variant = null;
                     $price = (float) $product->base_price;
 
+                    // Varian wajib valid: milik produk ini, aktif, dan dipilih jika produk punya varian
+                    $hasVariants = $product->variants()->where('is_active', true)->exists();
                     if (!empty($item['variant_id'])) {
-                        $variant = ProductVariant::find($item['variant_id']);
-                        if ($variant) {
-                            $price = (float) $variant->price;
+                        $variant = $product->variants()->where('is_active', true)->find($item['variant_id']);
+                        if (!$variant) {
+                            throw new \DomainException("Varian {$product->name} tidak tersedia, silakan pilih ulang.");
                         }
+                        $price = (float) $variant->price;
+                    } elseif ($hasVariants) {
+                        throw new \DomainException("Pilih varian untuk {$product->name}.");
                     }
 
                     // Check flash sale — bisa untuk produk tanpa varian ATAU untuk varian spesifik
@@ -386,7 +400,7 @@ class StoreFrontController extends Controller
                 $discountAmount = 0;
                 $discountCodeId = null;
                 if ($request->filled('discount_code')) {
-                    $discountCode = DiscountCode::where('code', strtoupper($request->discount_code))->first();
+                    $discountCode = DiscountCode::where('code', strtoupper($request->discount_code))->lockForUpdate()->first();
                     if ($discountCode && $discountCode->isValid($subtotal)) {
                         $discountAmount = $discountCode->calculateDiscount($subtotal);
                         $discountCodeId = $discountCode->id;

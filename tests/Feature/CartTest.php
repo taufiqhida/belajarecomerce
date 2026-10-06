@@ -56,7 +56,7 @@ class CartTest extends TestCase
     private function order($pm, $p, $v, int $qty)
     {
         return $this->postJson('/api/order', [
-            'customer_name' => 'A', 'customer_phone' => '08', 'payment_method_id' => $pm->id,
+            'customer_name' => 'A', 'customer_phone' => '081234567890', 'payment_method_id' => $pm->id,
             'items' => [['product_id' => $p->id, 'variant_id' => $v->id, 'quantity' => $qty]],
         ]);
     }
@@ -116,5 +116,52 @@ class CartTest extends TestCase
 
         $this->assertEquals('cancelled', \App\Models\Order::first()->status);
         $this->assertEquals(12, (float) $p->fresh()->stock);
+    }
+
+    public function test_order_rejects_fake_variant_missing_variant_and_inactive_product(): void
+    {
+        [$pm, $p, $v] = $this->stockFixture(100);
+        $other = \App\Models\Product::create(['name' => 'Lain', 'slug' => 'lain', 'base_price' => 1, 'stock' => 9, 'is_active' => true]);
+        $otherV = $other->variants()->create(['name' => '1 kg', 'type' => 'weight', 'weight_kg' => 1, 'price' => 1]);
+
+        $send = fn($vid, $pid = null) => $this->postJson('/api/order', [
+            'customer_name' => 'A', 'customer_phone' => '081234567890', 'payment_method_id' => $pm->id,
+            'items' => [['product_id' => $pid ?? $p->id, 'variant_id' => $vid, 'quantity' => 1]],
+        ]);
+
+        $send(99999)->assertStatus(422);          // varian palsu
+        $send($otherV->id)->assertStatus(422);    // varian milik produk lain
+        $send(null)->assertStatus(422);           // produk bervarian tanpa memilih varian
+
+        $p->update(['is_active' => false]);
+        $send($v->id)->assertStatus(422);         // produk nonaktif
+        $this->assertEquals(100, (float) $p->fresh()->stock);
+    }
+
+    public function test_order_rejects_invalid_phone_number(): void
+    {
+        [$pm, $p, $v] = $this->stockFixture(100);
+        foreach (['08', 'abc', '12345678901'] as $phone) {
+            $this->postJson('/api/order', [
+                'customer_name' => 'A', 'customer_phone' => $phone, 'payment_method_id' => $pm->id,
+                'items' => [['product_id' => $p->id, 'variant_id' => $v->id, 'quantity' => 1]],
+            ])->assertStatus(422);
+        }
+        $this->assertEquals(100, (float) $p->fresh()->stock);
+    }
+
+    public function test_cancelling_order_returns_discount_code_usage(): void
+    {
+        [$pm, $p, $v] = $this->stockFixture(100);
+        $code = \App\Models\DiscountCode::create(['code' => 'HEMAT', 'type' => 'fixed', 'value' => 1000, 'min_purchase' => 0, 'max_uses' => 1, 'is_active' => true]);
+
+        $this->postJson('/api/order', [
+            'customer_name' => 'A', 'customer_phone' => '081234567890', 'payment_method_id' => $pm->id, 'discount_code' => 'HEMAT',
+            'items' => [['product_id' => $p->id, 'variant_id' => $v->id, 'quantity' => 1]],
+        ])->assertOk();
+        $this->assertEquals(1, $code->fresh()->used_count);
+
+        \App\Models\Order::first()->update(['status' => 'cancelled']);
+        $this->assertEquals(0, $code->fresh()->used_count);
     }
 }
