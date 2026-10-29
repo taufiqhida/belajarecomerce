@@ -13,6 +13,8 @@ class ViewOrder extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
+            OrderResource::setShippingAction(Actions\Action::class),
+            OrderResource::sendInvoiceAction(Actions\Action::class),
             Actions\EditAction::make()->label('Update Status'),
             Actions\Action::make('cetak_nota')
                 ->label('🖨️ Cetak Nota')

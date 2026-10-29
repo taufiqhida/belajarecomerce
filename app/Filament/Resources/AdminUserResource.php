@@ -56,6 +56,7 @@ class AdminUserResource extends Resource
                             'manage_products' => '🛍️ Kelola Produk & Kategori',
                             'manage_orders' => '📦 Kelola Pesanan',
                             'manage_payments' => '💳 Kelola Metode Pembayaran',
+                            'manage_shipping' => '🚚 Kelola Zona Ongkir',
                             'manage_discounts' => '🏷️ Kelola Kode Diskon',
                             'manage_testimonials' => '⭐ Moderasi Testimoni',
                             'manage_flash_sales' => '⚡ Kelola Flash Sale',

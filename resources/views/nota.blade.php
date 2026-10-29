@@ -297,6 +297,17 @@
                     <span>Rp {{ number_format($order->admin_fee, 0, ',', '.') }}</span>
                 </div>
             @endif
+            @if($order->shipping_fee > 0)
+                <div class="summary-row">
+                    <span class="summary-label">Ongkir{{ $order->shipping_zone_name ? ' (' . $order->shipping_zone_name . ')' : '' }}</span>
+                    <span>Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</span>
+                </div>
+            @elseif($order->shipping_pending)
+                <div class="summary-row">
+                    <span class="summary-label">Ongkir</span>
+                    <span>Menunggu konfirmasi admin</span>
+                </div>
+            @endif
             @if($order->discount_amount > 0)
                 <div class="summary-row">
                     <span class="summary-label">Diskon</span>
@@ -318,6 +329,11 @@
         {{-- PAYMENT --}}
         <div class="nota-payment">
             Dibayar via: <strong>{{ $order->paymentMethod->name ?? '-' }}</strong>
+            @if($order->delivery_method === 'pickup')
+                <br>Ambil di tempat
+            @elseif($order->customer_address)
+                <br>Alamat: {{ $order->customer_address }}
+            @endif
             @if($order->customer_note)
                 <br>Catatan: {{ $order->customer_note }}
             @endif

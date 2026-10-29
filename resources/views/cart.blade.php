@@ -105,6 +105,33 @@
                 <div id="cartDiscountMsg" style="font-size:0.75rem;margin-top:0.35rem;"></div>
             </div>
             <div class="form-group">
+                <label class="form-label">Pengambilan Pesanan *</label>
+                <select class="form-control" id="cartDeliveryMethod" onchange="cartToggleDelivery()">
+                    <option value="delivery">🚚 Dikirim ke alamat</option>
+                    <option value="pickup">🏬 Ambil di tempat</option>
+                </select>
+            </div>
+            <div id="cartDeliveryFields">
+                @include('partials.region-picker', ['p' => 'cart'])
+                {{-- dipilih otomatis dari pilihan wilayah; pembeli hanya melihat info ongkir --}}
+                    <div class="form-group" style="display:none;">
+                        <label class="form-label">Daerah Pengiriman *</label>
+                        <select class="form-control" id="cartShippingZone" onchange="cartUpdateCalc()">
+                            <option value="">-- Pilih daerah --</option>
+                            @foreach($shippingZones as $zone)
+                                <option value="{{ $zone->id }}" data-fee="{{ $zone->fee }}" data-name="{{ $zone->name }}" data-regency="{{ $zone->regency_code }}" data-district="{{ $zone->district_code }}">
+                                    {{ $zone->name }} — Rp {{ number_format($zone->fee, 0, ',', '.') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                <div class="form-group">
+                    <label class="form-label">Detail Alamat *</label>
+                    <textarea class="form-control" id="cartCustAddress" rows="3"
+                        placeholder="Jalan, nomor rumah, RT/RW, patokan"></textarea>
+                </div>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Catatan (opsional)</label>
                 <textarea class="form-control" id="cartCustNote" placeholder="Permintaan khusus..."></textarea>
             </div>
@@ -116,6 +143,8 @@
                         style="color:var(--mid)">Subtotal</span><span id="cartCalcSubtotal">Rp 0</span></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span
                         style="color:var(--mid)">Biaya Admin</span><span id="cartCalcFee">Rp 0</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;" id="cartShipRow"><span
+                        style="color:var(--mid)">Ongkir</span><span id="cartCalcShip">Rp 0</span></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;display:none;"
                     id="cartDiscountRow"><span style="color:var(--mid)">Diskon</span><span id="cartCalcDiscount"
                         style="color:var(--primary);">-Rp 0</span></div>
@@ -135,6 +164,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/region-picker.js') }}"></script>
     <script>
         let cartUniqueCode = 0;
         let cartDiscountData = null;
@@ -269,6 +299,21 @@
             return getCart().reduce((sum, item) => sum + (item.price * (item.qty || 1)), 0);
         }
 
+        function cartIsPickup() { return document.getElementById('cartDeliveryMethod').value === 'pickup'; }
+
+        // Ongkir hanya untuk tampilan; angka resmi dihitung ulang di server
+        function cartShipFee() {
+            if (cartIsPickup()) return 0;
+            const sel = document.getElementById('cartShippingZone');
+            const opt = sel ? sel.selectedOptions[0] : null;
+            return opt && opt.value ? parseFloat(opt.dataset.fee || 0) : 0;
+        }
+
+        function cartToggleDelivery() {
+            document.getElementById('cartDeliveryFields').style.display = cartIsPickup() ? 'none' : 'block';
+            cartUpdateCalc();
+        }
+
         function cartUpdateCalc() {
             const subtotal = cartGetSubtotal();
             const pmSel = document.getElementById('cartPaymentMethod');
@@ -280,8 +325,10 @@
                 fee = feeType === 'percent' ? (subtotal * rawFee / 100) : rawFee;
             }
             const discount = cartDiscountData ? cartDiscountData.discount : 0;
-            const total = subtotal + fee - discount + cartUniqueCode;
+            const ship = cartShipFee();
+            const total = subtotal + fee + ship - discount + cartUniqueCode;
 
+            document.getElementById('cartCalcShip').textContent = cartIsPickup() ? 'Gratis (ambil di tempat)' : (RegionPicker.needsAdmin('cart') ? 'Menunggu konfirmasi admin' : fmtRp(ship));
             document.getElementById('cartCalcSubtotal').textContent = fmtRp(subtotal);
             document.getElementById('cartCalcFee').textContent = fmtRp(fee);
             document.getElementById('cartCalcUnique').textContent = '+Rp ' + cartUniqueCode.toLocaleString('id');
@@ -326,7 +373,14 @@
             const name = document.getElementById('cartCustName').value.trim();
             const phone = document.getElementById('cartCustPhone').value.trim();
             const pm = document.getElementById('cartPaymentMethod').value;
+            const pickup = cartIsPickup();
+            const detail = document.getElementById('cartCustAddress').value.trim();
+            const address = pickup ? '' : RegionPicker.address('cart', detail);
+            const zoneSel = document.getElementById('cartShippingZone');
             if (!name || !phone || !pm) { toast('Lengkapi nama, HP, dan metode pembayaran', 'err'); return; }
+            if (!pickup && address === null) { toast('Pilih provinsi sampai desa/kelurahan', 'err'); return; }
+            if (!pickup && detail.length < 5) { toast('Isi detail alamat (jalan, nomor rumah, RT/RW)', 'err'); return; }
+            if (!pickup && address.length < 10) { toast('Isi alamat pengiriman dengan lengkap', 'err'); return; }
 
             const cart = getCart();
             if (cart.length === 0) { toast('Keranjang kosong', 'err'); return; }
@@ -345,6 +399,10 @@
             const payload = {
                 customer_name: name,
                 customer_phone: phone,
+                customer_address: address,
+                delivery_method: pickup ? 'pickup' : 'delivery',
+                regency_code: pickup ? null : RegionPicker.codes('cart').regency,
+                district_code: pickup ? null : RegionPicker.codes('cart').district,
                 customer_note: document.getElementById('cartCustNote').value,
                 payment_method_id: pm,
                 discount_code: cartDiscountData ? document.getElementById('cartDiscountCode').value : null,
@@ -381,7 +439,8 @@
                     const feeType = pmOpt.dataset.feeType || 'fixed';
                     fee = feeType === 'percent' ? (subtotal * rawFee / 100) : rawFee;
                 }
-                const total = subtotal + fee - discount + cartUniqueCode;
+                const ship = cartShipFee();
+                const total = subtotal + fee + ship - discount + cartUniqueCode;
                 const orderCode = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 let waMsg = `Halo kak, saya mau pesan:\n\n`;
@@ -401,6 +460,12 @@
                 waMsg += `💳 Pembayaran: ${pmName}\n`;
                 waMsg += `📱 No. HP: ${phone}\n`;
                 waMsg += `👤 Nama: ${name}\n`;
+                if (pickup) {
+                    waMsg += `🏬 Ambil di tempat\n`;
+                } else {
+                    if (ship > 0) waMsg += `🚚 Ongkir ${zoneSel.selectedOptions[0].dataset.name}: ${fmtRp(ship)}\n`;
+                    waMsg += `📍 Alamat: ${address}\n`;
+                }
 
                 const note = document.getElementById('cartCustNote').value.trim();
                 if (note) waMsg += `📝 Catatan: ${note}\n`;
@@ -427,5 +492,6 @@
 
         renderCart();
         syncCartWithServer().then(renderCart);
+        RegionPicker.init('cart', { zoneSelectId: 'cartShippingZone', onZone: cartUpdateCalc });
     </script>
 @endsection

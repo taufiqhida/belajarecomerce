@@ -78,15 +78,25 @@ class OrderResource extends Resource
                 TextEntry::make('customer_name')->label('Nama'),
                 TextEntry::make('customer_phone')->label('Nomor HP'),
                 TextEntry::make('paymentMethod.name')->label('Metode Bayar'),
+                TextEntry::make('delivery_method')->label('Pengambilan')->badge()
+                    ->formatStateUsing(fn($state) => $state === 'pickup' ? 'Ambil di tempat' : 'Dikirim')
+                    ->color(fn($state) => $state === 'pickup' ? 'info' : 'success'),
+                TextEntry::make('shipping_zone_name')->label('Daerah')->placeholder('-'),
+                TextEntry::make('shipping_fee')->label('Ongkir')->money('IDR')
+                    ->formatStateUsing(fn($state, $record) => $record->shipping_pending ? 'Belum ditentukan' : 'Rp ' . number_format((float) $state, 0, ',', '.'))
+                    ->badge(fn($record) => (bool) $record->shipping_pending)
+                    ->color(fn($record) => $record->shipping_pending ? 'warning' : 'gray'),
+                TextEntry::make('customer_address')->label('Alamat Pengiriman')->placeholder('-')->columnSpanFull(),
                 TextEntry::make('customer_note')->label('Catatan')->columnSpanFull(),
             ])->columns(3),
             InfoSection::make('Rincian Harga')->schema([
                 TextEntry::make('subtotal')->label('Subtotal')->money('IDR'),
                 TextEntry::make('admin_fee')->label('Biaya Admin')->money('IDR'),
+                TextEntry::make('shipping_fee')->label('Ongkir')->money('IDR'),
                 TextEntry::make('discount_amount')->label('Diskon')->money('IDR'),
                 TextEntry::make('unique_code')->label('Kode Unik'),
                 TextEntry::make('total')->label('TOTAL')->money('IDR')->weight('bold')->size('lg'),
-            ])->columns(5),
+            ])->columns(3),
             InfoSection::make('Item Pesanan')->schema([
                 RepeatableEntry::make('items')->schema([
                     TextEntry::make('product_name')->label('Produk'),
@@ -124,6 +134,10 @@ class OrderResource extends Resource
                         'cancelled' => 'Dibatalkan',
                         default => $state,
                     }),
+                TextColumn::make('shipping_pending')->label('Ongkir')
+                    ->badge()
+                    ->formatStateUsing(fn($state) => $state ? 'Perlu ditentukan' : '')
+                    ->color('warning'),
                 TextColumn::make('total')->label('Total')->money('IDR')->sortable(),
                 TextColumn::make('ordered_at')->label('Tanggal')->dateTime('d/m/Y H:i')->sortable(),
             ])
@@ -136,12 +150,54 @@ class OrderResource extends Resource
                     'completed' => 'Selesai',
                     'cancelled' => 'Dibatalkan',
                 ])->label('Status'),
+                Tables\Filters\TernaryFilter::make('shipping_pending')->label('Menunggu ongkir')
+                    ->trueLabel('Perlu ongkir')->falseLabel('Sudah ada ongkir')->placeholder('Semua'),
             ])
             ->actions([
                 Tables\Actions\ViewAction::make(),
+                static::setShippingAction(Tables\Actions\Action::class),
+                static::sendInvoiceAction(Tables\Actions\Action::class),
                 Tables\Actions\EditAction::make()->label('Update Status'),
             ])
             ->defaultSort('ordered_at', 'desc');
+    }
+
+    /**
+     * Admin menentukan ongkir (daerah tanpa tarif, atau mengubah ongkir) lalu total dihitung ulang.
+     * $class: Filament\Actions\Action (halaman) atau Filament\Tables\Actions\Action (tabel).
+     */
+    public static function setShippingAction(string $class)
+    {
+        return $class::make('set_ongkir')
+            ->label(fn(Order $record) => $record->shipping_pending ? 'Set Ongkir' : 'Ubah Ongkir')
+            ->icon('heroicon-o-truck')
+            ->color(fn(Order $record) => $record->shipping_pending ? 'warning' : 'gray')
+            ->visible(fn(Order $record) => $record->delivery_method === 'delivery' && !in_array($record->status, ['cancelled', 'completed'], true))
+            ->modalHeading('Tentukan Ongkir')
+            ->modalDescription(fn(Order $record) => "Alamat: {$record->customer_address}")
+            ->form([
+                TextInput::make('fee')->label('Ongkir')->numeric()->prefix('Rp')->minValue(0)->required()
+                    ->default(fn(Order $record) => (float) $record->shipping_fee ?: null),
+            ])
+            ->action(function (Order $record, array $data) {
+                $record->applyShippingFee((float) $data['fee']);
+                \Filament\Notifications\Notification::make()
+                    ->title('Ongkir disimpan. Total sekarang Rp ' . number_format((float) $record->total, 0, ',', '.'))
+                    ->body('Kirim invoice ke pembeli dengan tombol "Kirim Invoice".')
+                    ->success()->send();
+            });
+    }
+
+    /** Buka WhatsApp ke pembeli berisi total (termasuk ongkir) dan tautan invoice */
+    public static function sendInvoiceAction(string $class)
+    {
+        return $class::make('kirim_invoice')
+            ->label('Kirim Invoice')
+            ->icon('heroicon-o-paper-airplane')
+            ->color('success')
+            ->visible(fn(Order $record) => !$record->shipping_pending && $record->status !== 'cancelled')
+            ->url(fn(Order $record) => $record->invoiceWhatsappUrl())
+            ->openUrlInNewTab();
     }
 
     public static function getPages(): array

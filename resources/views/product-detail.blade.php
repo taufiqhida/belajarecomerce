@@ -573,6 +573,33 @@
                 <div id="discountMsg" style="font-size:0.75rem;margin-top:0.35rem;"></div>
             </div>
             <div class="form-group">
+                <label class="form-label">Pengambilan Pesanan *</label>
+                <select class="form-control" id="deliveryMethod" onchange="toggleDelivery()">
+                    <option value="delivery">🚚 Dikirim ke alamat</option>
+                    <option value="pickup">🏬 Ambil di tempat</option>
+                </select>
+            </div>
+            <div id="deliveryFields">
+                @include('partials.region-picker', ['p' => 'pd'])
+                {{-- dipilih otomatis dari pilihan wilayah; pembeli hanya melihat info ongkir --}}
+                    <div class="form-group" style="display:none;">
+                        <label class="form-label">Daerah Pengiriman *</label>
+                        <select class="form-control" id="shippingZone" onchange="updateCalc()">
+                            <option value="">-- Pilih daerah --</option>
+                            @foreach($shippingZones as $zone)
+                                <option value="{{ $zone->id }}" data-fee="{{ $zone->fee }}" data-name="{{ $zone->name }}" data-regency="{{ $zone->regency_code }}" data-district="{{ $zone->district_code }}">
+                                    {{ $zone->name }} — Rp {{ number_format($zone->fee, 0, ',', '.') }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                <div class="form-group">
+                    <label class="form-label">Detail Alamat *</label>
+                    <textarea class="form-control" id="customerAddress" rows="3"
+                        placeholder="Jalan, nomor rumah, RT/RW, patokan"></textarea>
+                </div>
+            </div>
+            <div class="form-group">
                 <label class="form-label">Catatan (opsional)</label>
                 <textarea class="form-control" id="customerNote"
                     placeholder="Warna, ukuran, atau permintaan khusus..."></textarea>
@@ -585,6 +612,8 @@
                         style="color:var(--mid)">Subtotal</span><span id="calcSubtotal">Rp 0</span></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;"><span
                         style="color:var(--mid)">Biaya Admin</span><span id="calcFee">Rp 0</span></div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;" id="shipRow"><span
+                        style="color:var(--mid)">Ongkir</span><span id="calcShip">Rp 0</span></div>
                 <div style="display:flex;justify-content:space-between;margin-bottom:0.3rem;display:none;" id="discountRow">
                     <span style="color:var(--mid)">Diskon</span><span id="calcDiscount" style="color:var(--primary);">-Rp
                         0</span>
@@ -708,6 +737,7 @@
 @endsection
 
 @section('scripts')
+    <script src="{{ asset('js/region-picker.js') }}"></script>
     <script>
         let selectedVariantId = null;
         let selectedVariantName = '';
@@ -825,6 +855,21 @@
 
         const fmt = n => 'Rp ' + Math.round(n).toLocaleString('id');
 
+        function isPickup() { return document.getElementById('deliveryMethod').value === 'pickup'; }
+
+        // Ongkir hanya untuk tampilan; angka resmi dihitung ulang di server
+        function shipFee() {
+            if (isPickup()) return 0;
+            const sel = document.getElementById('shippingZone');
+            const opt = sel ? sel.selectedOptions[0] : null;
+            return opt && opt.value ? parseFloat(opt.dataset.fee || 0) : 0;
+        }
+
+        function toggleDelivery() {
+            document.getElementById('deliveryFields').style.display = isPickup() ? 'none' : 'block';
+            updateCalc();
+        }
+
         function updateCalc() {
             const subtotal = selectedVariantPrice * quantity;
             const pmSel = document.getElementById('paymentMethod');
@@ -836,8 +881,10 @@
                 fee = feeType === 'percent' ? (subtotal * rawFee / 100) : rawFee;
             }
             const discount = discountData ? discountData.discount : 0;
-            const total = subtotal + fee - discount + uniqueCode;
+            const ship = shipFee();
+            const total = subtotal + fee + ship - discount + uniqueCode;
 
+            document.getElementById('calcShip').textContent = isPickup() ? 'Gratis (ambil di tempat)' : (RegionPicker.needsAdmin('pd') ? 'Menunggu konfirmasi admin' : fmt(ship));
             document.getElementById('calcSubtotal').textContent = fmt(subtotal);
             document.getElementById('calcFee').textContent = fmt(fee);
             document.getElementById('calcUnique').textContent = '+Rp ' + uniqueCode.toLocaleString('id');
@@ -882,7 +929,14 @@
             const name = document.getElementById('customerName').value.trim();
             const phone = document.getElementById('customerPhone').value.trim();
             const pm = document.getElementById('paymentMethod').value;
+            const pickup = isPickup();
+            const detail = document.getElementById('customerAddress').value.trim();
+            const address = pickup ? '' : RegionPicker.address('pd', detail);
+            const zoneSel = document.getElementById('shippingZone');
             if (!name || !phone || !pm) { toast('Lengkapi nama, HP, dan metode pembayaran', 'err'); return; }
+            if (!pickup && address === null) { toast('Pilih provinsi sampai desa/kelurahan', 'err'); return; }
+            if (!pickup && detail.length < 5) { toast('Isi detail alamat (jalan, nomor rumah, RT/RW)', 'err'); return; }
+            if (!pickup && address.length < 10) { toast('Isi alamat pengiriman dengan lengkap', 'err'); return; }
 
             const btn = document.getElementById('orderBtn');
             btn.disabled = true;
@@ -891,6 +945,10 @@
             const payload = {
                 customer_name: name,
                 customer_phone: phone,
+                customer_address: address,
+                delivery_method: pickup ? 'pickup' : 'delivery',
+                regency_code: pickup ? null : RegionPicker.codes('pd').regency,
+                district_code: pickup ? null : RegionPicker.codes('pd').district,
                 customer_note: document.getElementById('customerNote').value,
                 payment_method_id: pm,
                 discount_code: discountData ? document.getElementById('discountCode').value : null,
@@ -928,7 +986,8 @@
                     const feeType = pmOpt.dataset.feeType || 'fixed';
                     fee = feeType === 'percent' ? (subtotal * rawFee / 100) : rawFee;
                 }
-                const total = subtotal + fee - discount + uniqueCode;
+                const ship = shipFee();
+                const total = subtotal + fee + ship - discount + uniqueCode;
                 const orderCode = 'ORD-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
                 let waMsg = `Halo kak, saya mau pesan:\n\n`;
@@ -944,6 +1003,12 @@
                 waMsg += `💳 Pembayaran: ${pmName}\n`;
                 waMsg += `📱 No. HP: ${phone}\n`;
                 waMsg += `👤 Nama: ${name}\n`;
+                if (pickup) {
+                    waMsg += `🏬 Ambil di tempat\n`;
+                } else {
+                    if (ship > 0) waMsg += `🚚 Ongkir ${zoneSel.selectedOptions[0].dataset.name}: ${fmt(ship)}\n`;
+                    waMsg += `📍 Alamat: ${address}\n`;
+                }
 
                 const note = document.getElementById('customerNote').value.trim();
                 if (note) waMsg += `📝 Catatan: ${note}\n`;
@@ -1052,5 +1117,6 @@
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim Ulasan';
         }
+        RegionPicker.init('pd', { zoneSelectId: 'shippingZone', onZone: updateCalc });
     </script>
 @endsection

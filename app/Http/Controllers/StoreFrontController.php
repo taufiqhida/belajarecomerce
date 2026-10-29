@@ -11,6 +11,7 @@ use App\Models\OrderItem;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Models\ShippingZone;
 use App\Models\StoreSetting;
 use App\Models\Testimonial;
 use Illuminate\Http\Request;
@@ -88,7 +89,9 @@ class StoreFrontController extends Controller
             ->whereHas('order', fn($q) => $q->where('status', '!=', 'cancelled'))
             ->sum('weight_kg');
 
-        return view('product-detail', compact('product', 'flashSale', 'setting', 'paymentMethods', 'testimonials', 'soldCount'));
+        $shippingZones = ShippingZone::activeList();
+
+        return view('product-detail', compact('product', 'flashSale', 'setting', 'paymentMethods', 'testimonials', 'soldCount', 'shippingZones'));
     }
 
     public function flashSale()
@@ -107,7 +110,8 @@ class StoreFrontController extends Controller
     {
         $setting = StoreSetting::current();
         $paymentMethods = PaymentMethod::where('is_active', true)->orderBy('sort_order')->get();
-        return view('cart', compact('setting', 'paymentMethods'));
+        $shippingZones = ShippingZone::activeList();
+        return view('cart', compact('setting', 'paymentMethods', 'shippingZones'));
     }
 
     public function articles(Request $request)
@@ -139,28 +143,53 @@ class StoreFrontController extends Controller
     public function invoice(Request $request)
     {
         $setting = StoreSetting::current();
-        $orders = collect();
+        $order = null;
         $searched = false;
 
-        if ($request->filled('phone')) {
+        if ($request->isMethod('post')) {
+            $data = $request->validate([
+                'order_code' => 'required|string|max:30',
+                'pin' => 'required|digits:4',
+            ]);
             $searched = true;
-            $query = Order::where('customer_phone', $request->phone)
-                ->with(['items', 'paymentMethod']);
 
-            if ($request->filled('status') && $request->status !== 'semua') {
-                if ($request->status === 'proses') {
-                    $query->whereIn('status', ['pending', 'confirmed', 'processing', 'shipped']);
-                } elseif ($request->status === 'selesai') {
-                    $query->where('status', 'completed');
-                } elseif ($request->status === 'batal') {
-                    $query->where('status', 'cancelled');
-                }
+            // Sandi = 4 digit terakhir nomor HP saat memesan. Pesan gagal sengaja sama
+            // untuk "kode salah" dan "sandi salah" agar kode pesanan tidak bisa ditebak.
+            $candidate = Order::where('order_code', strtoupper(trim($data['order_code'])))
+                ->with(['items', 'paymentMethod'])
+                ->first();
+            $last4 = $candidate ? substr(preg_replace('/\D/', '', (string) $candidate->customer_phone), -4) : '';
+            if ($candidate && hash_equals($last4, $data['pin'])) {
+                $order = $candidate;
             }
-
-            $orders = $query->orderBy('ordered_at', 'desc')->get();
         }
 
-        return view('invoice', compact('setting', 'orders', 'searched'));
+        // Pop up sandi bertanya dulu lewat AJAX supaya sandi salah tidak menutup pop up
+        if ($request->expectsJson()) {
+            return $order
+                ? response()->json(['ok' => true])
+                : response()->json(['message' => 'Kode pesanan atau sandi salah'], 422);
+        }
+
+        return view('invoice', compact('setting', 'order', 'searched'));
+    }
+
+    /**
+     * Daftar wilayah Indonesia (provinsi → kabupaten/kota → kecamatan → desa/kelurahan),
+     * diteruskan dari wilayah.id lewat cache (lihat App\Support\Wilayah).
+     */
+    public function wilayah(string $level, ?string $id = null)
+    {
+        $parentLen = \App\Support\Wilayah::PARENT_LENGTH[$level];
+        if ($parentLen === null ? $id !== null : ($id === null || strlen($id) !== $parentLen)) {
+            abort(404);
+        }
+
+        $data = \App\Support\Wilayah::list($level, $id);
+
+        return $data === null
+            ? response()->json(['message' => 'Data wilayah tidak tersedia'], 503)
+            : response()->json($data);
     }
 
     public function searchProducts(Request $request)
@@ -279,14 +308,23 @@ class StoreFrontController extends Controller
 
     public function createOrder(Request $request)
     {
+        // Tanpa pilihan, dianggap dikirim (perilaku lama)
+        $request->merge(['delivery_method' => $request->input('delivery_method', 'delivery')]);
+
         $request->validate([
+            'delivery_method' => 'required|in:delivery,pickup',
+            'regency_code' => ['nullable', 'string', 'max:10', 'regex:/^[0-9.]+$/'],
+            'district_code' => ['nullable', 'string', 'max:12', 'regex:/^[0-9.]+$/'],
             'customer_name' => 'required|string|max:255',
             'customer_phone' => ['required', 'string', 'max:30', 'regex:/^(\+?62|0)8[0-9\s\-]{7,15}$/'],
+            'customer_address' => 'required_if:delivery_method,delivery|nullable|string|min:10|max:500',
             'payment_method_id' => 'required|exists:payment_methods,id',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
         ], [
+            'customer_address.required' => 'Alamat pengiriman wajib diisi.',
+            'customer_address.min' => 'Alamat terlalu singkat. Tulis lengkap: jalan, nomor, kelurahan/desa, kota.',
             'customer_phone.regex' => 'Nomor HP/WhatsApp tidak valid. Contoh: 08123456789',
         ]);
 
@@ -408,17 +446,31 @@ class StoreFrontController extends Controller
                     }
                 }
 
+                // Ongkir: dicari di server dari kode wilayah (tarif flat per kota/kecamatan). Ambil di tempat = gratis.
+                // Daerah tanpa tarif: pesanan tetap dibuat, ongkir ditentukan admin lalu invoice dikirim ke pembeli.
+                $isPickup = $request->delivery_method === 'pickup';
+                $zone = $isPickup ? null : ShippingZone::forRegion($request->regency_code, $request->district_code);
+                $shippingFee = $zone ? (float) $zone->fee : 0;
+                $shippingPending = !$isPickup && !$zone;
+
                 // Unique code (1–999)
                 $uniqueCode = rand(1, 999);
 
                 // Total
-                $total = $subtotal + $adminFee - $discountAmount + $uniqueCode;
+                $total = $subtotal + $adminFee + $shippingFee - $discountAmount + $uniqueCode;
 
                 // Create order
                 $order = Order::create([
                     'order_code' => Order::generateOrderCode(),
                     'customer_name' => $request->customer_name,
                     'customer_phone' => $request->customer_phone,
+                    'customer_address' => $isPickup ? null : trim((string) $request->customer_address),
+                    'delivery_method' => $request->delivery_method,
+                    'shipping_zone_id' => $zone?->id,
+                    'shipping_zone_name' => $zone?->name,
+                    'shipping_fee' => $shippingFee,
+                    'shipping_pending' => $shippingPending,
+                    'payment_due_at' => now()->addMinutes($shippingPending ? Order::SHIPPING_WAIT_HOURS * 60 : Order::PAYMENT_WINDOW_MINUTES),
                     'customer_note' => $request->customer_note,
                     'payment_method_id' => $paymentMethod->id,
                     'discount_code_id' => $discountCodeId,
@@ -463,6 +515,23 @@ class StoreFrontController extends Controller
                     ],
                     $template
                 );
+
+                // Info pengiriman. Template lama belum punya {address}: blok ini ditambahkan di akhir
+                if ($isPickup) {
+                    $deliveryText = "🏬 Ambil di tempat (tanpa ongkir)";
+                } else {
+                    $deliveryText = '';
+                    if ($zone) {
+                        $deliveryText .= "🚚 Ongkir {$zone->name}: Rp " . number_format($shippingFee, 0, ',', '.') . "\n";
+                    } else {
+                        $deliveryText .= "🚚 Ongkir: *menunggu konfirmasi admin* (belum termasuk di total)\n";
+                    }
+                    $deliveryText .= "📍 Alamat Pengiriman:\n" . trim((string) $request->customer_address);
+                }
+                $message = str_replace('{address}', $deliveryText, $message);
+                if (!str_contains((string) $template, '{address}')) {
+                    $message .= "\n\n" . $deliveryText;
+                }
 
                 $waNumber = preg_replace('/[^0-9]/', '', $setting->whatsapp_number);
                 $whatsappLink = 'https://wa.me/' . $waNumber . '?text=' . rawurlencode($message);

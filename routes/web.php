@@ -14,7 +14,11 @@ Route::middleware([CheckSiteMode::class])->group(function () {
     Route::get('/artikel', [StoreFrontController::class, 'articles'])->name('articles');
     Route::get('/artikel/{slug}', [StoreFrontController::class, 'articleDetail'])->name('article.detail');
     Route::get('/riwayat-pesanan', [StoreFrontController::class, 'invoice'])->name('riwayat-pesanan');
-    Route::get('/nota/{order_code}', [StoreFrontController::class, 'printCustomerNota'])->name('nota.customer');
+    // Sandi hanya 4 digit, jadi percobaan dibatasi
+    Route::post('/riwayat-pesanan', [StoreFrontController::class, 'invoice'])->middleware('throttle:10,1');
+    // Nota hanya bisa dibuka lewat tautan bertanda tangan dari riwayat (setelah kode + sandi benar)
+    Route::get('/nota/{order_code}', [StoreFrontController::class, 'printCustomerNota'])
+        ->middleware('signed:relative')->name('nota.customer');
 });
 
 // Halaman status — hanya bisa diakses saat mode aktif
@@ -38,6 +42,9 @@ Route::get('/coming-soon', function () {
 Route::prefix('api')->group(function () {
     Route::get('/products/search', [StoreFrontController::class, 'searchProducts']);
     Route::post('/cart/sync', [StoreFrontController::class, 'syncCart']);
+    Route::get('/wilayah/{level}/{id?}', [StoreFrontController::class, 'wilayah'])
+        ->whereIn('level', ['provinces', 'regencies', 'districts', 'villages'])
+        ->where('id', '[0-9.]+')->middleware('throttle:120,1');
     Route::get('/settings', [StoreFrontController::class, 'getSettings']);
     Route::post('/discount/validate', [StoreFrontController::class, 'validateDiscount']);
     Route::post('/order', [StoreFrontController::class, 'createOrder']);

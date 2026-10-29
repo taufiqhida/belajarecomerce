@@ -277,6 +277,12 @@
                                 <div class="il-meta-label">Metode Bayar</div>
                                 <div class="il-meta-val">{{ $order->paymentMethod->name ?? '-' }}</div>
                             </div>
+                            @if($order->customer_address)
+                            <div>
+                                <div class="il-meta-label">Alamat</div>
+                                <div class="il-meta-val">{{ $order->customer_address }}</div>
+                            </div>
+                            @endif
                             @if($order->customer_note)
                             <div>
                                 <div class="il-meta-label">Catatan</div>

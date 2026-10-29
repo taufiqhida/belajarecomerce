@@ -280,46 +280,44 @@
     <div class="invoice-wrap">
         <div class="invoice-header">
             <h1>📋 Riwayat Pesanan</h1>
-            <p>Masukkan nomor HP untuk melihat semua riwayat pesanan Anda</p>
+            <p>Masukkan kode pesanan dan sandi (4 digit terakhir nomor HP saat memesan)</p>
         </div>
 
         <div class="search-card">
-            <form action="{{ route('riwayat-pesanan') }}" method="GET" class="search-form">
+            <form id="historyForm" action="{{ route('riwayat-pesanan') }}" method="POST" class="search-form">
+                @csrf
+                <input type="hidden" name="pin" id="historyPin">
                 <div class="search-field" style="flex:2;">
-                    <label>Nomor HP / WhatsApp</label>
-                    <input type="tel" name="phone" value="{{ request('phone') }}" placeholder="Contoh: 087739612610"
-                        required autofocus>
+                    <label>Kode Pesanan</label>
+                    <input type="text" name="order_code" id="historyCode" value="{{ old('order_code') }}"
+                        placeholder="Contoh: TS-1A2B3C4D" required autofocus autocomplete="off"
+                        style="text-transform:uppercase;">
                 </div>
-                <input type="hidden" name="status" value="{{ request('status', 'semua') }}">
                 <button type="submit" class="btn btn-primary" style="height:42px;white-space:nowrap;">
                     <i class="fas fa-search"></i> Cari Pesanan
                 </button>
             </form>
+            @if($errors->any())
+                <p style="color:#dc2626;font-size:.85rem;margin-top:.75rem;">{{ $errors->first() }}</p>
+            @endif
         </div>
 
-        @if($searched)
-            <div class="status-tabs">
-                <a href="{{ route('riwayat-pesanan', ['phone' => request('phone'), 'status' => 'semua']) }}" 
-                   class="status-tab {{ request('status', 'semua') === 'semua' ? 'active' : '' }}">Semua</a>
-                <a href="{{ route('riwayat-pesanan', ['phone' => request('phone'), 'status' => 'proses']) }}" 
-                   class="status-tab {{ request('status') === 'proses' ? 'active' : '' }}">Dalam Proses</a>
-                <a href="{{ route('riwayat-pesanan', ['phone' => request('phone'), 'status' => 'selesai']) }}" 
-                   class="status-tab {{ request('status') === 'selesai' ? 'active' : '' }}">Selesai</a>
-                <a href="{{ route('riwayat-pesanan', ['phone' => request('phone'), 'status' => 'batal']) }}" 
-                   class="status-tab {{ request('status') === 'batal' ? 'active' : '' }}">Dibatalkan</a>
-            </div>
-
-            @if($orders->count() > 0)
-                <div class="print-bar">
-                    <div class="result-info">
-                        📋 Ditemukan <strong>{{ $orders->count() }}</strong> pesanan untuk nomor <strong>{{ request('phone') }}</strong> 
-                        @if(request('status') && request('status') !== 'semua')
-                            dengan status <strong>{{ ucfirst(request('status')) }}</strong>
-                        @endif
-                    </div>
+        <div id="pinModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center;padding:16px;">
+            <div style="background:#fff;border-radius:14px;padding:1.5rem;width:100%;max-width:340px;text-align:center;">
+                <div style="font-size:1.75rem;">🔒</div>
+                <h3 style="margin:.25rem 0 .5rem;">Masukkan Sandi</h3>
+                <p style="font-size:.85rem;color:#666;margin-bottom:1rem;">4 digit terakhir nomor HP yang dipakai saat memesan</p>
+                <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off"
+                    style="width:100%;text-align:center;font-size:1.5rem;letter-spacing:.5rem;padding:.6rem;border:1px solid #ccc;border-radius:8px;">
+                <p id="pinError" style="display:none;color:#dc2626;font-size:.85rem;margin-top:.6rem;"></p>
+                <div style="display:flex;gap:.5rem;margin-top:1rem;">
+                    <button type="button" id="pinCancel" class="btn btn-ghost" style="flex:1;">Batal</button>
+                    <button type="button" id="pinOk" class="btn btn-primary" style="flex:1;">Buka</button>
                 </div>
+            </div>
+        </div>
 
-                @foreach($orders as $order)
+        @if($searched && $order)
                     <div class="order-card">
                         <div class="order-card-header">
                             <div>
@@ -333,7 +331,7 @@
                                 {{ $order->status_label }}
                             </span>
                             <div style="width: 100%; margin-top: 0.5rem;">
-                                <a href="{{ route('nota.customer', $order->order_code) }}" target="_blank" class="btn btn-ghost" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 6px;">
+                                <a href="{{ \Illuminate\Support\Facades\URL::signedRoute('nota.customer', $order->order_code, null, false) }}" target="_blank" class="btn btn-ghost" style="font-size: 0.75rem; padding: 0.35rem 0.75rem; border-radius: 6px;">
                                     <i class="fas fa-print"></i> Cetak Nota
                                 </a>
                             </div>
@@ -366,6 +364,17 @@
                                         <span>Rp {{ number_format($order->admin_fee, 0, ',', '.') }}</span>
                                     </div>
                                 @endif
+                                @if($order->shipping_fee > 0)
+                                    <div class="summary-row">
+                                        <span style="color:var(--mid)">Ongkir{{ $order->shipping_zone_name ? ' (' . $order->shipping_zone_name . ')' : '' }}</span>
+                                        <span>Rp {{ number_format($order->shipping_fee, 0, ',', '.') }}</span>
+                                    </div>
+                                @elseif($order->shipping_pending)
+                                    <div class="summary-row">
+                                        <span style="color:var(--mid)">Ongkir</span>
+                                        <span style="color:#b45309;font-weight:600;">Menunggu konfirmasi admin</span>
+                                    </div>
+                                @endif
                                 @if($order->discount_amount > 0)
                                     <div class="summary-row">
                                         <span style="color:var(--mid)">Diskon</span>
@@ -390,16 +399,69 @@
                                     💳 {{ $order->paymentMethod->name }} ({{ ucfirst($order->paymentMethod->type) }})
                                 </div>
                             @endif
+                            <div class="order-payment">
+                                @if($order->delivery_method === 'pickup')
+                                    🏪 Ambil di tempat
+                                @elseif($order->customer_address)
+                                    🚚 {{ $order->customer_address }}
+                                @endif
+                            </div>
                         </div>
                     </div>
-                @endforeach
-            @else
-                <div class="empty-state" style="padding:3rem 1rem;">
-                    <span class="empty-state-icon">🔍</span>
-                    <h3>Tidak Ada Pesanan</h3>
-                    <p>Tidak ditemukan pesanan untuk nomor <strong>{{ request('phone') }}</strong>. Pastikan nomor HP yang Anda masukkan sesuai dengan nomor saat memesan.</p>
-                </div>
-            @endif
+        @elseif($searched)
+            <div class="empty-state" style="padding:3rem 1rem;">
+                <span class="empty-state-icon">🔍</span>
+                <h3>Pesanan Tidak Ditemukan</h3>
+                <p>Kode pesanan atau sandi tidak cocok. Sandi adalah 4 digit terakhir nomor HP yang dipakai saat memesan.</p>
+            </div>
         @endif
     </div>
+@endsection
+
+@section('scripts')
+    <script>
+        (function () {
+            const form = document.getElementById('historyForm');
+            const modal = document.getElementById('pinModal');
+            const input = document.getElementById('pinInput');
+            const hidden = document.getElementById('historyPin');
+
+            const okBtn = document.getElementById('pinOk');
+            const err = document.getElementById('pinError');
+            const showError = (msg) => { err.textContent = msg; err.style.display = 'block'; };
+
+            const open = () => { err.style.display = 'none'; modal.style.display = 'flex'; input.value = ''; input.focus(); };
+            const close = () => { modal.style.display = 'none'; };
+
+            // Cari kode dulu, sandi ditanyakan lewat pop up
+            form.addEventListener('submit', function (e) {
+                if (!/^\d{4}$/.test(hidden.value)) { e.preventDefault(); open(); }
+            });
+            const confirmPin = async () => {
+                if (!/^\d{4}$/.test(input.value)) { input.focus(); return; }
+                hidden.value = input.value;
+                okBtn.disabled = true;
+                try {
+                    const res = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        body: new FormData(form),
+                    });
+                    if (res.ok) { form.submit(); return; }   // benar: tampilkan pesanan
+                    showError(res.status === 429 ? 'Terlalu banyak percobaan, coba lagi sebentar lagi' : 'Kode pesanan atau sandi salah');
+                } catch (e) {
+                    showError('Gagal terhubung, coba lagi');
+                }
+                hidden.value = '';
+                okBtn.disabled = false;
+                input.value = '';
+                input.focus();
+            };
+            document.getElementById('pinOk').addEventListener('click', confirmPin);
+            document.getElementById('pinCancel').addEventListener('click', close);
+            input.addEventListener('input', () => { input.value = input.value.replace(/\D/g, ''); });
+            input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); confirmPin(); } });
+            modal.addEventListener('click', e => { if (e.target === modal) close(); });
+        })();
+    </script>
 @endsection

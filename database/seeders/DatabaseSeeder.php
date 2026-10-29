@@ -51,6 +51,9 @@ class DatabaseSeeder extends Seeder
         // Kategori & produk ikan (kategori dibuat di ProductSeeder)
         $this->call(ProductSeeder::class);
 
+        // Zona ongkir Barlingmascakeb (Cilacap dan sekitarnya)
+        $this->call(ShippingZoneSeeder::class);
+
         $this->command->info('✅ Seeder selesai!');
         $this->command->info('📧 Super Admin: admin@coldstorage.com / password');
         $this->command->info('📧 Staf Admin: staf@coldstorage.com / password');

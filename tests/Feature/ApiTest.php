@@ -44,6 +44,7 @@ class ApiTest extends TestCase
         $response = $this->postJson('/api/order', [
             'customer_name'     => 'John',
             'customer_phone'    => '081234567890',
+            'customer_address'  => 'Jl. Mawar No. 1, Bitung',
             'payment_method_id' => $pm->id,
             'items'             => [
                 ['product_id' => $product->id, 'variant_id' => null, 'quantity' => 2],
