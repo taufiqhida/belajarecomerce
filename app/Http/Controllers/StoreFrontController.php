@@ -528,6 +528,10 @@ class StoreFrontController extends Controller
                     }
                     $deliveryText .= "📍 Alamat Pengiriman:\n" . trim((string) $request->customer_address);
                 }
+                // Kode pesanan selalu ada di awal pesan, meski template lama belum punya {order_code}
+                if (!str_contains((string) $template, '{order_code}')) {
+                    $message = "🧾 Kode Pesanan: *{$order->order_code}*\n\n" . $message;
+                }
                 $message = str_replace('{address}', $deliveryText, $message);
                 if (!str_contains((string) $template, '{address}')) {
                     $message .= "\n\n" . $deliveryText;
